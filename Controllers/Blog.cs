@@ -48,6 +48,27 @@ namespace BloggingAPI.Controllers
             return Ok(reslt);
         }
         [Authorize]
+        [HttpGet]
+        [Route("[controller]/GetNotification")]
+        public async Task<IActionResult> GetNotification()
+        {
+            var Rslt = GetCrntUserNonayc(HttpContext);
+            _bContext = new BloggingContext();
+            var Notications = await (from noti in _bContext.Notification
+                                     join usr in _bContext.Users on noti.NotFrom equals usr.UsId
+                                     where noti.NotTo == Rslt.UsId
+                                     select new
+                                     {
+                                         fromid = usr.FirstName + usr.LastName,
+                                         prof = Request.Scheme + "://" + Request.Host.Value + (usr.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usr.ImagePath}")),
+                                         body = noti.NotBody,
+                                         datetime = noti.NotDateTime,
+                                         nav = noti.NotRoute
+                                     }).OrderByDescending(x => x.datetime).ToListAsync();
+            return Ok(Notications);
+        }
+
+        [Authorize]
         [HttpPost]
         [Route("[controller]/AddQst")]
         public async Task<IActionResult> AddQst([FromBody] Questions Qst)
@@ -56,7 +77,6 @@ namespace BloggingAPI.Controllers
             var Rslt = await GetCrntUser(HttpContext);
             Qst.AskedBy = Rslt.UsId;
             Qst.AskedOn = DateTime.Now;
-            Qst.Tags = string.Join(",", _bContext.Tags.Select(x => x.TgId.ToString()).ToList().Take(2).ToList().ToArray());
             _bContext.Questions.Add(Qst);
             await _bContext.SaveChangesAsync();
             return Ok(new { Status = HttpStatusCode.OK, Message = "Posted" });
@@ -73,7 +93,7 @@ namespace BloggingAPI.Controllers
                           {
                               Fullname = usr.FirstName + "" + usr.LastName,
                               DOB = usr.Dob,
-                              profile = getimagebasestring(usr.ImagePath),
+                              profile = Request.Scheme + "://" + Request.Host.Value + (usr.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usr.ImagePath}")),
                               contact = usr.EmailId,
                               Questions = _bContext.Questions.Where(x => x.AskedBy == usr.UsId).Count(),
                               Answers = _bContext.Answers.Where(x => x.AnswredBy == usr.UsId).Count()
@@ -96,7 +116,7 @@ namespace BloggingAPI.Controllers
                             {
                                 Fullname = usr.FirstName + " " + usr.LastName,
                                 DOB = usr.Dob,
-                                pic = getimagebasestring(usr.ImagePath),
+                                pic = Request.Scheme + "://" + Request.Host.Value + (usr.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usr.ImagePath}")),
                                 email = usr.EmailId
                             }).ToList();
                 return Ok(rslt);
@@ -200,16 +220,34 @@ namespace BloggingAPI.Controllers
             await _bContext.SaveChangesAsync();
             DParameter db_pam = new DParameter();
             db_pam.Id = Ans.Qid.ToString();
-            Message msg = new Message();
-            msg.Dtime = DateTime.Now;
-            msg.Body = "Your Question has been answered by" + Rslt.FirstName + Rslt.LastName + "";
-            msg.Qid = Ans.Qid.ToString();
-            msg.To = "";
-            msg.Navigation = "/partIss/" + Ans.Qid.ToString();
+            var qst = await _bContext.Questions.FirstOrDefaultAsync(x => x.Qid == Convert.ToInt32(Ans.Qid));
+            Notification ntf = new Notification();
+            ntf.NotFrom = Rslt.UsId;
+            ntf.NotDateTime = DateTime.Now;
+            ntf.NotIsread = false;
+            ntf.NotRoute = "/PartIss/" + Ans.Qid.ToString();
+            ntf.NotBody = "Your Question has been answered by " + Rslt.FirstName + Rslt.LastName + "";
+            ntf.NotTo = qst.AskedBy;
+            await _bContext.Notification.AddAsync(ntf);
+            await _bContext.SaveChangesAsync();
+            var msg = await (from noti in _bContext.Notification
+                             join usr in _bContext.Users on noti.NotFrom equals usr.UsId
+                             where noti.NotId == ntf.NotId
+                             select new
+                             {
+                                 fromid = usr.FirstName + usr.LastName,
+                                 prof = Request.Scheme + "://" + Request.Host.Value + (usr.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usr.ImagePath}")),
+                                 body = noti.NotBody,
+                                 datetime = noti.NotDateTime,
+                                 nav = noti.NotRoute
+                             }).OrderByDescending(x => x.datetime).ToListAsync();
             var partusr = await GetPartUsr(Convert.ToInt32(Ans.Qid.ToString()));
-            if (partusr != null)
+            if (partusr.Count > 0)
             {
-                await Notification.Clients.Client(partusr.ConnectionId.ToString()).SendAsync("MessageReceived", msg);
+                foreach (var x in partusr)
+                {
+                    await Notification.Clients.Client(x.ConnectionId.ToString()).SendAsync("MessageReceived", msg[0]);
+                }
             }
             return GetPartQstAndAns(db_pam);
         }
@@ -233,6 +271,36 @@ namespace BloggingAPI.Controllers
                         likes.Likeby = Rslt.UsId;
                         await _bContext.Likes.AddAsync(likes);
                         await _bContext.SaveChangesAsync();
+                        var Ans = await _bContext.Answers.FirstOrDefaultAsync(x => x.Aid == likes.AnsId);
+                        var qst = await _bContext.Questions.FirstOrDefaultAsync(x => x.Qid == Ans.Qid);
+                        Notification ntf = new Notification();
+                        ntf.NotFrom = Rslt.UsId;
+                        ntf.NotDateTime = DateTime.Now;
+                        ntf.NotIsread = false;
+                        ntf.NotRoute = "/PartIss/" + qst.Qid.ToString();
+                        ntf.NotBody = "Your Answer Liked by " + Rslt.FirstName + Rslt.LastName + "";
+                        ntf.NotTo = qst.AskedBy;
+                        await _bContext.Notification.AddAsync(ntf);
+                        await _bContext.SaveChangesAsync();
+                        var msg = await (from noti in _bContext.Notification
+                                         join usr in _bContext.Users on noti.NotFrom equals usr.UsId
+                                         where noti.NotId == ntf.NotId
+                                         select new
+                                         {
+                                             fromid = usr.FirstName + usr.LastName,
+                                             prof = Request.Scheme + "://" + Request.Host.Value + (usr.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usr.ImagePath}")),
+                                             body = noti.NotBody,
+                                             datetime = noti.NotDateTime,
+                                             nav = noti.NotRoute
+                                         }).OrderByDescending(x => x.datetime).ToListAsync();
+                        var partusr = await GetPartUsrByAns(Convert.ToInt32(Ans.Aid.ToString()));
+                        if (partusr.Count > 0)
+                        {
+                            foreach (var x in partusr)
+                            {
+                                await Notification.Clients.Client(x.ConnectionId.ToString()).SendAsync("MessageReceived", msg[0]);
+                            }
+                        }
                         return new OkObjectResult(new { Message = "You Liked", Status = HttpStatusCode.OK });
                     }
                     else
@@ -253,19 +321,13 @@ namespace BloggingAPI.Controllers
                 return new OkObjectResult(new { Message = "", Error = Ex.Message.ToString(), Status = HttpStatusCode.InternalServerError });
             }
         }
-        [NonAction]
-        public static string getimagebasestring(string imagepath)
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("[controller]/GetTags")]
+        public async Task<IActionResult> GetTags()
         {
-            if (imagepath == null)
-            {
-                imagepath = Directory.GetCurrentDirectory() + @"\Contents\Images\Profile\Defaultprof.png";
-            }
-            else
-            {
-                imagepath = Directory.GetCurrentDirectory() + @"\Contents\Images\Profile\" + imagepath;
-            }
-            byte[] bts = System.IO.File.ReadAllBytes(imagepath);
-            return "data:image/png;base64," + Convert.ToBase64String(bts, 0, bts.Length).ToString();
+            _bContext = new BloggingContext();
+            return Ok(await _bContext.Tags.ToListAsync());
         }
         [NonAction]
         public async Task<Users> GetCrntUser(HttpContext httpContext)
@@ -291,12 +353,21 @@ namespace BloggingAPI.Controllers
             }
         }
         [NonAction]
-        public async Task<UserParam> GetPartUsr(int id)
+        public async Task<List<UserParam>> GetPartUsr(int id)
         {
             _bContext = new BloggingContext();
             var qst = await _bContext.Questions.FirstOrDefaultAsync(x => x.Qid == Convert.ToInt32(id));
             var usr = await _bContext.Users.FirstOrDefaultAsync(x => x.UsId == qst.AskedBy);
-            var users_ = Crntusr.param.FirstOrDefault(x => x.Username == usr.EmailId);
+            var users_ = Crntusr.param.Where(x => x.Username == usr.EmailId).ToList();
+            return users_;
+        }
+        [NonAction]
+        public async Task<List<UserParam>> GetPartUsrByAns(int id)
+        {
+            _bContext = new BloggingContext();
+            var qst = await _bContext.Answers.FirstOrDefaultAsync(x => x.Aid == Convert.ToInt32(id));
+            var usr = await _bContext.Users.FirstOrDefaultAsync(x => x.UsId == qst.AnswredBy);
+            var users_ = Crntusr.param.Where(x => x.Username == usr.EmailId).ToList();
             return users_;
         }
     }

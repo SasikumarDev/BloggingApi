@@ -88,11 +88,6 @@ namespace BloggingAPI
                 app.UseDeveloperExceptionPage();
             }
             app.UseStaticFiles();
-            app.UseDirectoryBrowser(new DirectoryBrowserOptions()
-            {
-                FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Contents/Images/Profile")),
-                RequestPath = new PathString("/Contents/Images/Profile")
-            });
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseCors("CorsPolicy");

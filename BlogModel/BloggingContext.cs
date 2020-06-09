@@ -16,7 +16,9 @@ namespace BloggingAPI.BlogModel
         }
 
         public virtual DbSet<Answers> Answers { get; set; }
+        public virtual DbSet<Comments> Comments { get; set; }
         public virtual DbSet<Likes> Likes { get; set; }
+        public virtual DbSet<Notification> Notification { get; set; }
         public virtual DbSet<PersonalDetails> PersonalDetails { get; set; }
         public virtual DbSet<Questions> Questions { get; set; }
         public virtual DbSet<Tags> Tags { get; set; }
@@ -55,10 +57,36 @@ namespace BloggingAPI.BlogModel
                     .HasConstraintName("FK_AQID");
             });
 
+            modelBuilder.Entity<Comments>(entity =>
+            {
+                entity.HasKey(e => e.ComId)
+                    .HasName("PK__Comments__E15F41320CBB06E7");
+
+                entity.Property(e => e.ComId).HasColumnName("ComID");
+
+                entity.Property(e => e.ComText).HasMaxLength(300);
+
+                entity.Property(e => e.ComType)
+                    .HasMaxLength(10)
+                    .IsUnicode(false);
+            });
+
             modelBuilder.Entity<Likes>(entity =>
             {
                 entity.HasKey(e => e.Lkid)
                     .HasName("PK__Likes__4F79A03141E77FA5");
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.NotId)
+                    .HasName("PK__Notifica__4FB200AAD4F986F3");
+
+                entity.Property(e => e.NotId).HasColumnName("NotID");
+
+                entity.Property(e => e.NotDateTime).HasColumnType("smalldatetime");
+
+                entity.Property(e => e.NotRoute).HasMaxLength(100);
             });
 
             modelBuilder.Entity<PersonalDetails>(entity =>
