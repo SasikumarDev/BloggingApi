@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using bloggingapi.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using AngleSharp.Html.Parser;
+using AngleSharp;
+using AngleSharp.Dom;
 
 namespace BloggingAPI.Controllers
 {
@@ -39,7 +42,7 @@ namespace BloggingAPI.Controllers
                          select new
                          {
                              QstId = qst.Qid,
-                             Question = qst.Question,
+                             Question = qst.Title,
                              Askedby = Rslt != null ? (Rslt.UsId == Usr.UsId ? "You" : Usr.FirstName + " " + Usr.LastName.ToString()) : Usr.FirstName + " " + Usr.LastName.ToString(),
                              AskedOn = qst.AskedOn,
                              Tags = _bContext.Tags.ToList().Where(zx => Tgs.TagsID.Any(x => x.ToString() == zx.TgId.ToString())).Select(x => x.Tagname).ToList(),
@@ -171,6 +174,7 @@ namespace BloggingAPI.Controllers
                                       select new
                                       {
                                           QstId = qst.Qid,
+                                          Title = qst.Title,
                                           Question = qst.Question,
                                           Askedby = Rslt != null ? (Rslt.UsId == Usr.UsId ? "You" : Usr.FirstName + " " + Usr.LastName.ToString()) : Usr.FirstName + " " + Usr.LastName.ToString(),
                                           AskedOn = qst.AskedOn,
@@ -190,7 +194,14 @@ namespace BloggingAPI.Controllers
                                            TLikes = _bContext.Likes.Where(x => x.AnsId == Ans.Aid).Count(),
                                            ULikes = Rslt != null ? (_bContext.Likes.ToList().Where(x => x.Likeby == Rslt.UsId && x.AnsId == Ans.Aid).ToList().Count()) > 0 : true ? false : false
                                        }).OrderBy(x => x.AnsID).ToList();
-                        return new OkObjectResult(new { Question = Qstion[0], Answers = Answers, Message = "", Status = HttpStatusCode.OK });
+                        var Contributors = (from usrs in _bContext.Users.ToList()
+                                            where Answers.Any(ans => ans.aid == usrs.UsId)
+                                            select new
+                                            {
+                                                Name = usrs.FirstName + "" + usrs.LastName,
+                                                pic = Request.Scheme + "://" + Request.Host.Value + (usrs.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usrs.ImagePath}")),
+                                            }).ToList();
+                        return new OkObjectResult(new { Question = Qstion[0], Answers = Answers, Contrib = Contributors, Message = "", Status = HttpStatusCode.OK });
                     }
                     else
                     {
@@ -279,7 +290,7 @@ namespace BloggingAPI.Controllers
                         ntf.NotIsread = false;
                         ntf.NotRoute = "/PartIss/" + qst.Qid.ToString();
                         ntf.NotBody = "Your Answer Liked by " + Rslt.FirstName + Rslt.LastName + "";
-                        ntf.NotTo = qst.AskedBy;
+                        ntf.NotTo = Ans.AnswredBy;
                         await _bContext.Notification.AddAsync(ntf);
                         await _bContext.SaveChangesAsync();
                         var msg = await (from noti in _bContext.Notification
@@ -329,6 +340,21 @@ namespace BloggingAPI.Controllers
             _bContext = new BloggingContext();
             return Ok(await _bContext.Tags.ToListAsync());
         }
+        [AllowAnonymous]
+        [HttpPost]
+        [Route("[controller]/SearchTags")]
+        public async Task<IActionResult> SearchTags(DParameter Dp)
+        {
+            _bContext = new BloggingContext();
+            var result = await (from Tag in _bContext.Tags
+                                where Tag.Tagname.Contains(Dp.Name)
+                                select new
+                                {
+                                    id = Tag.TgId,
+                                    Name = Tag.Tagname
+                                }).Take(10).ToListAsync();
+            return Ok(result);
+        }
         [NonAction]
         public async Task<Users> GetCrntUser(HttpContext httpContext)
         {
@@ -370,6 +396,41 @@ namespace BloggingAPI.Controllers
             var users_ = Crntusr.param.Where(x => x.Username == usr.EmailId).ToList();
             return users_;
         }
+        /*
+          Web Scraping to get popular Tags in stackoverflow and insert in Tags Table 
+          [HttpGet]
+          [AllowAnonymous]
+          [Route("[controller]/GenerateTags")]
+          public async Task<IActionResult> GenerateTags()
+          {
+              try
+              {
+                  var config = Configuration.Default;
+                  _bContext = new BloggingContext();
+                  var context = BrowsingContext.New(config);
+                  foreach (int i in Enumerable.Range(1, 100))
+                  {
+                      using (WebClient wc = new WebClient())
+                      {
+                          var html = wc.DownloadString($"https://stackoverflow.com/tags?page={i.ToString()}&tab=popular");
+                          var document = await context.OpenAsync(req => req.Content(html));
+                          var PopularTags = document.QuerySelectorAll("a.post-tag").Select(x => x.Text()).ToList();
+                          foreach (string tag in PopularTags)
+                          {
+                             Tags T_ = new Tags();
+                             T_.Tagname = tag;
+                             _bContext.Tags.Add(T_);
+                             await _bContext.SaveChangesAsync();
+                          }
+                      }
+                  }
+                  return Ok("Tags Successfully Created..");
+              }
+              catch (Exception ex)
+              {
+                   return new OkObjectResult(new { Message = ex.Message.ToString(), Status = HttpStatusCode.BadRequest });
+              }
+          }*/
     }
     public class DParameter
     {

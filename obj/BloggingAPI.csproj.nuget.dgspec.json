@@ -40,9 +40,9 @@
       "frameworks": {
         "netcoreapp3.1": {
           "dependencies": {
-            "Microsoft.AspNet.StaticFiles": {
+            "AngleSharp": {
               "target": "Package",
-              "version": "[*, )"
+              "version": "[0.14.0, )"
             },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",

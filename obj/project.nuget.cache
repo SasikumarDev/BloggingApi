@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "vnvNn53MdoMByRCPIMaOMTOK3H1l+BqDTo0BI46SfJ8O+CeXHcZYwJq3S/MoF75DRLb+6L5k0YYrs9QmCsFklw==",
+  "dgSpecHash": "6eEbOUE//mpvVCl+J/4U6zNhOW8XA6Vm5FmnP6sGe+KQ83RL0+ZxAGDF21iConOzJyaEPw6LjevbJ1NAXyJGNg==",
   "success": true,
   "projectFilePath": "C:\\Users\\Sasikumar\\Desktop\\prg\\DotNetCore\\WEBAPI\\BloggingAPI\\BloggingAPI.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Sasikumar\\.nuget\\packages\\anglesharp\\0.14.0\\anglesharp.0.14.0.nupkg.sha512",
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\microsoft.aspnetcore.authentication\\2.2.0\\microsoft.aspnetcore.authentication.2.2.0.nupkg.sha512",
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\microsoft.aspnetcore.authentication.abstractions\\2.2.0\\microsoft.aspnetcore.authentication.abstractions.2.2.0.nupkg.sha512",
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\microsoft.aspnetcore.authentication.cookies\\2.2.0\\microsoft.aspnetcore.authentication.cookies.2.2.0.nupkg.sha512",

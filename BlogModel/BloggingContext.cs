@@ -91,30 +91,27 @@ namespace BloggingAPI.BlogModel
 
             modelBuilder.Entity<PersonalDetails>(entity =>
             {
-                entity.HasKey(e => e.Pid)
-                    .HasName("PK__Personal__C57755406ACFBFFF");
+                entity.HasKey(e => e.PId)
+                    .HasName("PK__Personal__DD36D50246E74DBB");
 
-                entity.Property(e => e.Pid).HasColumnName("PId");
+                entity.Property(e => e.PId).HasColumnName("pID");
 
-                entity.Property(e => e.Address)
+                entity.Property(e => e.Address).HasMaxLength(200);
+
+                entity.Property(e => e.Company).HasMaxLength(200);
+
+                entity.Property(e => e.FaceBook).HasMaxLength(100);
+
+                entity.Property(e => e.Github)
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
                 entity.Property(e => e.Job)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
-
-                entity.Property(e => e.JobLocation)
+                    .HasColumnName("job")
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
                 entity.Property(e => e.UsId).HasColumnName("UsID");
-
-                entity.HasOne(d => d.Us)
-                    .WithMany(p => p.PersonalDetails)
-                    .HasForeignKey(d => d.UsId)
-                    .OnDelete(DeleteBehavior.Cascade)
-                    .HasConstraintName("FK_PRSNUSID");
             });
 
             modelBuilder.Entity<Questions>(entity =>

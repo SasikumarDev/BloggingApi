@@ -41,22 +41,22 @@ namespace bloggingapi.Hubs
                 return null;
             }
         }
-        public async Task NewMessage(Message msg)
-        {
-            _bContext = new BloggingContext();
-            var qst = await _bContext.Questions.FirstOrDefaultAsync(x => x.Qid == Convert.ToInt32(msg.Qid));
-            var usr = await _bContext.Users.FirstOrDefaultAsync(x => x.UsId == qst.AskedBy);
-            var users_ = Crntusr.param.FirstOrDefault(x => x.Username == usr.EmailId);
-            //await Clients.All.SendAsync("MessageReceived", msg);
-            if (users_ != null)
-            {
-                await Clients.All.SendAsync("MessageReceived", msg);
-            }
-            else
-            {
-                await Clients.All.SendAsync("MessageReceived", msg);
-            }
-        }
+        // public async Task NewMessage(Message msg)
+        // {
+        //     _bContext = new BloggingContext();
+        //     var qst = await _bContext.Questions.FirstOrDefaultAsync(x => x.Qid == Convert.ToInt32(msg.Qid));
+        //     var usr = await _bContext.Users.FirstOrDefaultAsync(x => x.UsId == qst.AskedBy);
+        //     var users_ = Crntusr.param.FirstOrDefault(x => x.Username == usr.EmailId);
+        //     //await Clients.All.SendAsync("MessageReceived", msg);
+        //     if (users_ != null)
+        //     {
+        //         await Clients.All.SendAsync("MessageReceived", msg);
+        //     }
+        //     else
+        //     {
+        //         await Clients.All.SendAsync("MessageReceived", msg);
+        //     }
+        // }
     }
     public class Message
     {

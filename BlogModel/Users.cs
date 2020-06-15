@@ -8,7 +8,6 @@ namespace BloggingAPI.BlogModel
         public Users()
         {
             Answers = new HashSet<Answers>();
-            PersonalDetails = new HashSet<PersonalDetails>();
             Questions = new HashSet<Questions>();
         }
 
@@ -23,7 +22,6 @@ namespace BloggingAPI.BlogModel
         public DateTime? Updatedate { get; set; }
 
         public virtual ICollection<Answers> Answers { get; set; }
-        public virtual ICollection<PersonalDetails> PersonalDetails { get; set; }
         public virtual ICollection<Questions> Questions { get; set; }
     }
 }

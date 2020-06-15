@@ -15,6 +15,7 @@ namespace BloggingAPI.BlogModel
         public int? AskedBy { get; set; }
         public DateTime? AskedOn { get; set; }
         public string Tags { get; set; }
+        public string Title { get; set; }
 
         public virtual Users AskedByNavigation { get; set; }
         public virtual ICollection<Answers> Answers { get; set; }
