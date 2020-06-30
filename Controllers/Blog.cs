@@ -46,7 +46,8 @@ namespace BloggingAPI.Controllers
                              Askedby = Rslt != null ? (Rslt.UsId == Usr.UsId ? "You" : Usr.FirstName + " " + Usr.LastName.ToString()) : Usr.FirstName + " " + Usr.LastName.ToString(),
                              AskedOn = qst.AskedOn,
                              Tags = _bContext.Tags.ToList().Where(zx => Tgs.TagsID.Any(x => x.ToString() == zx.TgId.ToString())).Select(x => x.Tagname).ToList(),
-                             AUID = qst.AskedBy
+                             AUID = qst.AskedBy,
+                             TCount = _bContext.Questions.ToList().Count()
                          }).OrderByDescending(x => x.AskedOn).Take(10).ToList();
             return Ok(reslt);
         }
@@ -179,7 +180,8 @@ namespace BloggingAPI.Controllers
                                           Askedby = Rslt != null ? (Rslt.UsId == Usr.UsId ? "You" : Usr.FirstName + " " + Usr.LastName.ToString()) : Usr.FirstName + " " + Usr.LastName.ToString(),
                                           AskedOn = qst.AskedOn,
                                           Tags = _bContext.Tags.ToList().Where(zx => Tgs.TagsID.Any(x => x.ToString() == zx.TgId.ToString())).Select(x => x.Tagname).ToList(),
-                                          AUID = qst.AskedBy
+                                          AUID = qst.AskedBy,
+                                          Tagsid = qst.Tags
                                       }).Take(1).ToList();
                         var Answers = (from Ans in _bContext.Answers.ToList()
                                        join Usr in _bContext.Users on Ans.AnswredBy equals Usr.UsId
@@ -201,7 +203,18 @@ namespace BloggingAPI.Controllers
                                                 Name = usrs.FirstName + "" + usrs.LastName,
                                                 pic = Request.Scheme + "://" + Request.Host.Value + (usrs.ImagePath == null ? Url.Content($"/Contents/Images/Defaultprof.png") : Url.Content($"/Contents/Images/{usrs.ImagePath}")),
                                             }).ToList();
-                        return new OkObjectResult(new { Question = Qstion[0], Answers = Answers, Contrib = Contributors, Message = "", Status = HttpStatusCode.OK });
+                        var tags_ = new SpltTgs { id = 0, TagsID = Qstion[0].Tagsid.Split(',').ToList() };
+                        var similarqst = (from qst in _bContext.Questions.ToList()
+                                          join Usr in _bContext.Users.ToList() on qst.AskedBy equals Usr.UsId
+                                          let Tgs = new SpltTgs { id = qst.Qid, TagsID = qst.Tags.Split(',').ToList() }
+                                          where Tgs.TagsID.Any(x => tags_.TagsID.Any(y => y.ToString() == x.ToString())) && qst.Qid != Qstion[0].QstId
+                                          select new
+                                          {
+                                              QstId = qst.Qid,
+                                              Title = qst.Title,
+                                              Tags = _bContext.Tags.ToList().Where(zx => Tgs.TagsID.Any(x => x.ToString() == zx.TgId.ToString())).Select(x => x.Tagname).ToList()
+                                          }).ToList();
+                        return new OkObjectResult(new { Question = Qstion[0], Answers = Answers, Contrib = Contributors, Similar = similarqst, Message = "", Status = HttpStatusCode.OK });
                     }
                     else
                     {
@@ -239,8 +252,18 @@ namespace BloggingAPI.Controllers
             ntf.NotRoute = "/PartIss/" + Ans.Qid.ToString();
             ntf.NotBody = "Your Question has been answered by " + Rslt.FirstName + Rslt.LastName + "";
             ntf.NotTo = qst.AskedBy;
-            await _bContext.Notification.AddAsync(ntf);
-            await _bContext.SaveChangesAsync();
+            var exsists = await _bContext.Notification.FirstOrDefaultAsync(x => x.NotFrom == ntf.NotFrom && x.NotTo == ntf.NotTo && x.NotRoute == ntf.NotRoute);
+            if (exsists == null)
+            {
+                await _bContext.Notification.AddAsync(ntf);
+                await _bContext.SaveChangesAsync();
+            }
+            else
+            {
+                exsists.NotDateTime = DateTime.Now;
+                _bContext.Entry(exsists).State = EntityState.Modified;
+                await _bContext.SaveChangesAsync();
+            }
             var msg = await (from noti in _bContext.Notification
                              join usr in _bContext.Users on noti.NotFrom equals usr.UsId
                              where noti.NotId == ntf.NotId
@@ -352,7 +375,7 @@ namespace BloggingAPI.Controllers
                                 {
                                     id = Tag.TgId,
                                     Name = Tag.Tagname
-                                }).Take(10).ToListAsync();
+                                }).Take(10).OrderBy(x => x.Name).ToListAsync();
             return Ok(result);
         }
         [NonAction]
@@ -397,7 +420,7 @@ namespace BloggingAPI.Controllers
             return users_;
         }
         /*
-          Web Scraping to get popular Tags in stackoverflow and insert in Tags Table 
+         -- Web Scraping to get popular Tags in stackoverflow and insert in Tags Table 
           [HttpGet]
           [AllowAnonymous]
           [Route("[controller]/GenerateTags")]
